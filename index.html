@@ -143,8 +143,8 @@
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
-
-				var evtSource = new EventSource('https://trawg.com/sse/stream.php');
+				// FIXME: this should be a config variable somewhere
+				var evtSource = new EventSource('https://example.com/sse/stream.php');
 				console.log(evtSource.withCredentials);
 				console.log(evtSource.readyState);
 				console.log(evtSource.url);
