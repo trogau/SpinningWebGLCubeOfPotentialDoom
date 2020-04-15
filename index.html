@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - buffergeometry - particles</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - buffergeometry - particles</div>
+
+		<script type="module">
+
+			import * as THREE from './three.module.js';
+			import { OrbitControls } from './OrbitControls.js';
+
+
+
+			var container;
+
+			var camera, scene, renderer;
+
+			var points;
+			var renderPoints;
+
+			var renderPositions = [];
+			var renderColors = [];
+
+			/*
+			for (var i = 0; i < 2000; i++)
+			{
+				renderPositions.push(THREE.MathUtils.randInt(-500, 500), THREE.MathUtils.randInt(-500, 500), THREE.MathUtils.randInt(-500, 500));
+				renderColors.push(0,1,0);	
+			}
+			*/
+
+			var renderPointsList = [];
+
+			var n = 2000; // particles spread in the cube  - length of edge of cube
+			var n2 = n / 2; 
+
+			var controls;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 115, 1113500 );
+				camera.position.z = 5750;
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x050505 );
+				//scene.fog = new THREE.Fog( 0x050505, 2500, 7500 );
+
+				var particles = 500;
+
+				var geometry = new THREE.BufferGeometry();
+
+				var positions = [];
+				var colors = [];
+
+				var color = new THREE.Color();
+
+				for ( var i = 0; i < particles; i ++ ) {
+
+					// positions
+					var x = Math.random() * n - n2;
+					var y = Math.random() * n - n2;
+					var z = Math.random() * n - n2;
+
+					positions.push( x, y, z );
+
+					// colors
+					var vx = ( x / n ) + 0.5;
+					var vy = ( y / n ) + 0.5;
+					var vz = ( z / n ) + 0.5;
+
+					color.setRGB( vx, vy, vz );
+
+					colors.push( color.r, color.g, color.b );
+
+				}
+
+				for (var i = 0; i < n; i++)
+				{
+					positions.push(i-n2, n2, n2);
+					positions.push(i-n2, n2, -n2);
+					positions.push(i-n2, -n2, -n2);
+
+					positions.push(i-n2, -n2, n2);
+					positions.push(-n2, i-n2, n2);
+					positions.push(n2, i-n2, n2);
+
+					positions.push(n2, n2, i-n2);
+					positions.push(n2, -n2, i-n2);
+					positions.push(n2, i-n2, -n2);
+
+					positions.push(-n2, n2, i-n2);
+					positions.push(-n2, -n2, i-n2);
+					positions.push(-n2, i-n2, -n2);
+
+
+					colors.push(1,0,0);
+					colors.push(1,0,0);
+					colors.push(1,0,0);
+					colors.push(0.8,0,0);
+					colors.push(0.8,0,0);
+					colors.push(0.8,0,0);
+					colors.push(0.8,0,0);
+					colors.push(0.8,0,0);
+					colors.push(0.8,1,0);
+					colors.push(0.8,0.8,0);
+					colors.push(0.8,0.8,0);
+					colors.push(0.8,0.8,0);
+					//colors.push(255,0,0);
+					//colors.push(255,0,0);
+					//colors.push(255,0,0);
+				}
+
+				geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+				geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
+				geometry.computeBoundingSphere();
+
+				var material = new THREE.PointsMaterial( { size: 15, vertexColors: true } );
+
+				points = new THREE.Points( geometry, material );
+				scene.add( points );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				container.appendChild( renderer.domElement );
+
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.autoRotate = true;
+				controls.addEventListener( 'change', render );		
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+
+				var evtSource = new EventSource('https://trawg.com/sse/stream.php');
+				console.log(evtSource.withCredentials);
+				console.log(evtSource.readyState);
+				console.log(evtSource.url);
+				evtSource.onopen = function() {
+				    console.log("Connection to server opened.");
+				};
+				evtSource.onmessage = function (e) {
+					var dataJSON = JSON.parse(e.data);
+
+					// convert IP addresses into an int
+					var fromIP = ip2int(dataJSON.fromIP);
+					var toIP = ip2int(dataJSON.toIP);
+
+					console.log("TO: " + toIP + " FROM: " + fromIP + " Port: " + dataJSON.toPort);
+
+					renderPositions.push(fromIP, toIP, dataJSON.toPort);
+				};
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				controls.update();		
+
+				render();
+			}
+
+			function render() {
+				var time = Date.now() * 0.001;
+
+				//points.rotation.x = time * 0.25;
+				//points.rotation.y = time * 0.25;
+				//points.rotation.z = time * 0.25;
+
+
+				// process the list of all points to manage (fade & remove if expired)
+				processPoints(time);
+
+
+				// look through the data source for new points of data
+				if (renderPositions.length > 2)
+				{
+					var newPointZ = renderPositions.pop();
+					var newPointY = renderPositions.pop();
+					var newPointX = renderPositions.pop();
+
+					// convert IP addresses into a suitable location for our xyz space
+					var tmp = Math.pow(2,32) / n; 
+					newPointX = Math.floor(newPointX / tmp) - n2;
+
+					// convert port as well
+					tmp = 65536 / n; 
+					newPointY = Math.floor((newPointZ / tmp) - n2);
+					//console.log("Point data - X: " + newPointX + " Y: " + newPointY + " Z: " + newPointZ);
+
+					// hack 
+					newPointZ = 0;
+
+					var newPoint = { x: newPointX, y: newPointY, z: newPointZ };
+
+					// render the data point
+					renderPoint(newPoint, time);
+				}
+
+				renderer.render( scene, camera );
+			}
+
+			function renderPoint(point)
+			{
+				var renderGeometry = new THREE.BufferGeometry();
+				var material = new THREE.PointsMaterial( { size: 55, vertexColors: true } );
+				material.blending = THREE.AdditiveBlending;
+
+				var pos = [];
+				var col = [];
+				
+				pos.push(point.x, point.y, point.z);
+
+				col.push(0,1,1);
+
+				renderGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( pos, 3 ) );
+				renderGeometry.setAttribute( 'color', new THREE.Float32BufferAttribute( col, 3 ) );
+				renderGeometry.computeBoundingSphere();
+
+				renderPoints = new THREE.Points( renderGeometry, material );
+				scene.add( renderPoints );
+				
+
+
+				// add the point to the list of points to be managing
+				renderPointsList.push(renderPoints);
+			}
+
+			function processPoints(time)
+			{
+				for (var i = 0; i < renderPointsList.length; i++)
+				{
+					var point = renderPointsList[i];
+					point.material.transparent = true;
+
+					point.material.opacity -= 0.005;
+
+					//point.rotation.y = time * 0.25;
+
+					if (point.material.opacity < 0.1)
+					{
+						//console.log("Removing point");
+						scene.remove(point);
+					}
+				}
+			}
+
+			// https://gist.github.com/jppommet/5708697
+			function ip2int(ip) 
+			{
+ 			   return ip.split('.').reduce(function(ipInt, octet) { return (ipInt<<8) + parseInt(octet, 10)}, 0) >>> 0;
+			}
+
+			function int2ip(ipInt) 
+			{
+				return ((ipInt >>> 24) + '.' + (ipInt >> 16 & 255) + '.' + (ipInt >> 8 & 255) + '.' + (ipInt & 255));
+			}			
+
+		</script>
+
+	</body>
+</html>
